@@ -22,9 +22,21 @@ func getProducts(c *gin.Context) {
   c.IndentedJSON(http.StatusOK, products)
 }
 
+func postProducts( c *gin.Context) {
+  var newProduct product
+
+  if err := c.BindJSON(&newProduct); err != nil {
+    return
+  }
+
+  products = append(products, newProduct)
+  c.IndentedJSON(http.StatusCreated, newProduct)
+}
+
 func main() {
   router := gin.Default()
   router.GET("/products", getProducts)
+  router.POST("/products", postProducts)
 
-  router.Run("localhost:8080")
+  router.Run(":80")
 }
