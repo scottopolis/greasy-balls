@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { getApiUrl } from "@/util/getApiUrl";
 import { useQuery } from "@tanstack/react-query";
-import wretch from "wretch";
 
 interface Product {
   id: number;
   name: string;
   price: number;
-  image: string;
+  image?: string;
 }
 
 const demoProducts: Product[] = [
@@ -50,39 +50,47 @@ const demoProducts: Product[] = [
 ];
 
 export function Products() {
-  function getProducts() {
-    return wretch().get(`${process.env.API_URL}/products`);
+  async function getProducts() {
+    const apiUrl = getApiUrl();
+    const response = fetch(`${apiUrl}/products`).then((res) => res.json());
+
+    return response;
   }
 
   const getProductsQuery = useQuery({
     queryKey: ["products"],
-    queryFn: getProducts,
+    queryFn: async () => await getProducts(),
   });
 
   const products: any = getProductsQuery?.data || demoProducts;
+
+  console.log(products);
 
   return (
     <>
       <h1 className="text-3xl font-bold mb-6">Our Products</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products?.map((product: any) => (
-          <Card key={product.id} className="overflow-hidden">
-            <CardContent className="p-4">
-              <img
-                src={`https://${product.image}`}
-                alt={product.name}
-                width={200}
-                height={200}
-                className="w-full h-48 object-cover mb-4 rounded-md"
-              />
-              <h2 className="text-lg font-semibold mb-2">{product.name}</h2>
-              <p className="text-gray-600">${product.price.toFixed(2)}</p>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full">Add to Cart</Button>
-            </CardFooter>
-          </Card>
-        ))}
+        {!getProductsQuery?.isFetching &&
+          products?.map((product: any) => (
+            <Card key={product.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                {product.image ? (
+                  <img
+                    src={`https://${product.image}`}
+                    alt={product.name}
+                    width={200}
+                    height={200}
+                    className="w-full h-48 object-cover mb-4 rounded-md"
+                  />
+                ) : null}
+                <h2 className="text-lg font-semibold mb-2">{product.name}</h2>
+                <p className="text-gray-600">${product.price.toFixed(2)}</p>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full">Add to Cart</Button>
+              </CardFooter>
+            </Card>
+          ))}
       </div>
     </>
   );

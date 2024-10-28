@@ -1,9 +1,10 @@
 package main
 
 import (
-  "net/http"
+	"net/http"
 
-  "github.com/gin-gonic/gin"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 type product struct {
@@ -35,6 +36,7 @@ func postProducts( c *gin.Context) {
 
 func main() {
   router := gin.Default()
+  router.Use(cors.Default())
   router.GET("/products", getProducts)
   router.POST("/products", postProducts)
 
