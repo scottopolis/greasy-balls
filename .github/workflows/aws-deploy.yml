@@ -30,14 +30,11 @@ jobs:
         with:
           node-version: 18
 
-      - name: go to site dir
-        run: cd site/vite-site
-
       - name: install dependencies
-        run: npm ci
+        run: cd site/vite-site && pwd && npm ci
 
       - name: build
-        run: npm run build
+        run: cd site/vite-site && npm run build
 
       - name: Copy files to s3
         run: |
