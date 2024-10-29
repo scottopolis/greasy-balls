@@ -1,5 +1,10 @@
 name: AWS Deploy
-on: [push, workflow_dispatch] #
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 env:
   BUCKET_NAME: "sb-greasy-balls-site"
   AWS_REGION: "us-east-1"
@@ -12,12 +17,25 @@ jobs:
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v4
+
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
           role-to-assume: arn:aws:iam::442042544151:role/ecsTaskExecutionRole
           role-session-name: deploysession
           aws-region: ${{ env.AWS_REGION }}
-      - name: Copy index.html to s3
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: install dependencies
+        run: npm ci
+
+      - name: build
+        run: npm run build
+
+      - name: Copy files to s3
         run: |
-          aws s3 cp ./README.md s3://${{ env.BUCKET_NAME }}/
+          aws s3 cp ./site/vite-site/dist/ s3://${{ env.BUCKET_NAME }}/

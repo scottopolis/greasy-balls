@@ -64,7 +64,7 @@ export function Products() {
 
   const products: any = getProductsQuery?.data || demoProducts;
 
-  console.log(products);
+  console.log("products", products);
 
   return (
     <>
