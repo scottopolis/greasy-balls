@@ -38,4 +38,5 @@ jobs:
 
       - name: Copy files to s3
         run: |
+          aws s3 rm s3://${{ env.BUCKET_NAME }} --recursive
           aws s3 cp ./site/vite-site/dist/ s3://${{ env.BUCKET_NAME }}/ --recursive
