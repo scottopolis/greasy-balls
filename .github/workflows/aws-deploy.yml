@@ -1,5 +1,5 @@
 name: AWS Deploy
-on: [push, workflow_dispatch]
+on: [push, workflow_dispatch] #
 env:
   BUCKET_NAME: "sb-greasy-balls-site"
   AWS_REGION: "us-east-1"
