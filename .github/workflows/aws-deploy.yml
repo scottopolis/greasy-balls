@@ -18,7 +18,6 @@ jobs:
           role-to-assume: arn:aws:iam::442042544151:role/github-oidc-permissions
           role-session-name: deploysession
           aws-region: ${{ env.AWS_REGION }}
-      # Upload a file to AWS s3
       - name: Copy index.html to s3
         run: |
           aws s3 cp ./README.md s3://${{ env.BUCKET_NAME }}/
