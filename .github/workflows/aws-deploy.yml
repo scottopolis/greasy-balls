@@ -30,6 +30,9 @@ jobs:
         with:
           node-version: 18
 
+      - name: go to site dir
+        run: cd site/vite-site
+
       - name: install dependencies
         run: npm ci
 
