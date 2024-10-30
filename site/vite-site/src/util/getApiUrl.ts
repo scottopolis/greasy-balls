@@ -3,6 +3,6 @@ export function getApiUrl() {
     case "development":
       return "http://localhost:8080";
     default:
-      return "http://54.208.24.104";
+      return "http://3.84.18.189";
   }
 }
