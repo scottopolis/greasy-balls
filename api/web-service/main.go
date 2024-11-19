@@ -1,57 +1,156 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type product struct {
-  ID string `json:"id"`
-  Name string `json:"name"`
-  Price float64 `json:"price"`
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
-var products = []product{
-  {ID: "1", Name: "Transition Repeater", Price: 9999.99},
-  {ID: "2", Name: "Titleist Pro V1", Price: 29.99},
-  {ID: "3", Name: "Maxxis Assegai", Price: 102.95},
+var db *sql.DB
+
+func main() {
+	router := gin.Default()
+	router.Use(cors.Default())
+	connectDb()
+	router.GET("/products", getProducts)
+	router.GET("/products/:id", getProductByID)
+	router.POST("/products", postProducts)
+
+	router.Run(":80")
+}
+
+func connectDb() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	host := os.Getenv("DB_HOST")
+	port := 5432
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
+
+	// Connection string
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
+	// Open database connection
+	db, err = sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	// Test the connection
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Successfully connected to db ")
+}
+
+func getProductsFromDB() ([]product, error) {
+	rows, err := db.Query("SELECT id, name, description FROM products")
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []product
+	for rows.Next() {
+		var p product
+		if err := rows.Scan(&p.ID, &p.Name, &p.Description); err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		products = append(products, p)
+	}
+
+	return products, nil
 }
 
 func getProducts(c *gin.Context) {
-  c.IndentedJSON(http.StatusOK, products)
+	if db == nil {
+		log.Println("Database connection not established")
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to the database"})
+		return
+	}
+
+	products, err := getProductsFromDB()
+	if err != nil {
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve product data"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, products)
 }
 
-func postProducts( c *gin.Context) {
-  var newProduct product
+func postProducts(c *gin.Context) {
+	var newProduct product
 
-  if err := c.BindJSON(&newProduct); err != nil {
-    return
-  }
+	if err := c.BindJSON(&newProduct); err != nil {
+		log.Println("bind json error", err)
+		return
+	}
 
-  products = append(products, newProduct)
-  c.IndentedJSON(http.StatusCreated, newProduct)
+	result, err := addProduct(&newProduct)
+	if err != nil {
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, err)
+	}
+
+	c.IndentedJSON(http.StatusCreated, result)
+}
+
+func addProduct(p *product) (int, error) {
+	_, err := db.Exec("INSERT INTO products (id, name, description) VALUES ($1, $2, $3)", p.ID, p.Name, p.Description)
+	if err != nil {
+		return 0, fmt.Errorf("addProduct: %v", err)
+	}
+
+	return p.ID, nil
 }
 
 func getProductByID(c *gin.Context) {
 	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
+		return
+	}
 
-	for _, a:= range products {
-		if a.ID == id {
-			c.IndentedJSON(http.StatusOK, a)
+	products, err := getProductsFromDB()
+	if err != nil {
+		log.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve products"})
+		return
+	}
+
+	fmt.Println(products)
+
+	for _, p := range products {
+		if p.ID == idInt {
+			c.IndentedJSON(http.StatusOK, p)
 			return
 		}
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "album not found"})
-}
-
-func main() {
-  router := gin.Default()
-  router.Use(cors.Default())
-  router.GET("/products", getProducts)
-  router.GET("/products/:id", getProductByID)
-  router.POST("/products", postProducts)
-
-  router.Run(":80")
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "product not found"})
 }
