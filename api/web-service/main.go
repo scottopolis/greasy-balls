@@ -34,7 +34,7 @@ func main() {
 }
 
 func connectDb() {
-	err := godotenv.Load(".env")
+	err := godotenv.Load(".env.local")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
 	}
@@ -130,6 +130,7 @@ func addProduct(p *product) (int, error) {
 }
 
 func getProductByID(c *gin.Context) {
+	var p product
 	id := c.Param("id")
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
@@ -137,20 +138,22 @@ func getProductByID(c *gin.Context) {
 		return
 	}
 
-	products, err := getProductsFromDB()
+	row, err := db.Query("SELECT id, name, description FROM products WHERE id = $1", idInt)
 	if err != nil {
-		log.Println(err)
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve products"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve product data"})
 		return
 	}
 
-	fmt.Println(products)
+	defer row.Close()
 
-	for _, p := range products {
-		if p.ID == idInt {
-			c.IndentedJSON(http.StatusOK, p)
+	for row.Next() {
+		if err := row.Scan(&p.ID, &p.Name, &p.Description); err != nil {
+			log.Println(err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve product data"})
 			return
 		}
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "product not found"})
+	fmt.Println(p)
+
+	c.IndentedJSON(http.StatusOK, p)
 }
